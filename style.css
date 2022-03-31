@@ -1,0 +1,19 @@
+body {
+    background-color: papayawhip;
+    padding: 0;
+    margin: 0;
+}
+
+#wrapper {
+    background-color: white;
+    margin: 0 auto;
+    padding: 1rem 1rem;
+    width: 80%;
+}
+
+#canvasHolder {
+    width: 50%;
+}
+
+#mainCanvas {
+}
