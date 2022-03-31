@@ -8,11 +8,11 @@ let canvas = document.getElementById("mainCanvas");
 const renderer = new THREE.WebGLRenderer( { 
     canvas: canvas 
 });
-//renderer.setSize( canvas.parentElement.offsetWidth, canvas.parentElement.offsetWidth * (window.innerHeight / window.innerWidth) );
-renderer.setSize( 500, 500 );
+renderer.setSize( canvas.parentElement.offsetHeight, canvas.parentElement.offsetHeight );
+//renderer.setSize( 500, 500 );
 
-window.addEventListener('resize', () => {
-    renderer.setSize( 500, 500 );
+window.addEventListener( 'resize', () => {
+    renderer.setSize( canvas.parentElement.offsetHeight, canvas.parentElement.offsetHeight );
 });
 
 var mouseDown = false;
@@ -134,8 +134,10 @@ scene.add(skybox);
 const geometry = new THREE.BoxGeometry();
 const material = new THREE.MeshBasicMaterial( { color: 0x00ff00, wireframe: true } );
 
+const CUBE_COUNT = 50;
+
 let cubes = [];
-for(let i = 0; i < 10; i++)
+for(let i = 0; i < CUBE_COUNT; i++)
 {
     var cube = new THREE.Mesh( geometry, material );
     cube.position.x = i;
@@ -152,7 +154,7 @@ function animate() {
 animate();
 
 setInterval(function(){
-    for(let i = 0; i < 10; i++)
+    for(let i = 0; i < CUBE_COUNT; i++)
     {
         cubes[i].rotation.x += 0.01 * i;
         //cubes[i].rotation.y += 0.01;

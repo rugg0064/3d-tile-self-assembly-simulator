@@ -15,8 +15,33 @@
 			<div class="">
 				<h1>Self assembling tile simulator</h1>
 			</div>
-			<div id="canvasHolder">
-				<canvas id="mainCanvas" class="webgl" tabindex='1'></canvas>
+			<div id="mainContainer">
+				<div id="canvasHolder">
+					<canvas id="mainCanvas" class="webgl" tabindex='1'></canvas>
+				</div>
+				<div id="configurator">
+					<div id="individualTileView">
+						<div id="tileViewer">
+							<canvas id="tileViewerCanvas" class="webgl" tabindex='1'></canvas>
+						</div>
+						<div id="tileSettings">
+							<h2>Tile Settings</h2>
+						</div>
+					</div>
+					<div id="tilesetAndJson">
+						<div id="tilesetPreview">
+							<h2>Tileset</h2>
+						</div>
+						<div id="jsonViewer">
+							<h2>Tileset JSON</h2>
+							<textarea id="jsonText"></textarea>
+							<div id="jsonViewerButtonContainer">
+								<button type="button">Generate</button>
+								<button type="button">Apply</button>
+							</div>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 	</body>
