@@ -60,10 +60,26 @@ h2 {
                 width: 100%;
                 height: 100%;
             }
-        #tileSettings {
-            background-color: green;
-            flex-grow: 1;
+        #settingsContainer {
+            display: flex;
+            flex-direction: row;
+            height: 100%;
         }
+            #settingsContainer > * {
+                flex-grow: 1;
+            }
+            #environmentSettings {
+                background-color: maroon;
+            }
+                #environmentSettingsList {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    align-content: flex-start;
+                }
+            #tileSettings {
+                background-color: green;
+            }
     #tilesetAndJson {
         display: flex;
         flex-direction: column;
@@ -73,9 +89,21 @@ h2 {
     #tilesetAndJson > * {
         flex-grow: 1;
     }
-        #tilesetPreview {
+        #tileset {
             background-color:orange;
+            display: flex;
+            flex-direction: column;
         }
+            #tilesetContainer {
+                flex-grow: 1;
+            }
+            #tilesetButtonContainer {
+                display: flex;
+                flex-direction: row;
+            }
+                #tilesetButtonContainer > * {
+                    flex-grow: 1;
+                }
         #jsonViewer {
             background-color: aqua;
             display: flex;

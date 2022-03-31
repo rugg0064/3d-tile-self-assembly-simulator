@@ -8,7 +8,7 @@
 	</head>
 
 	<script src="./three.js"></script>
-	<script defer src="./script.js"> </script>
+	<script src="./script.js" defer> </script>
 
 	<body>
 		<div id="wrapper">
@@ -24,20 +24,38 @@
 						<div id="tileViewer">
 							<canvas id="tileViewerCanvas" class="webgl" tabindex='1'></canvas>
 						</div>
-						<div id="tileSettings">
-							<h2>Tile Settings</h2>
+						<div id="settingsContainer">
+							<div id="environmentSettings">
+								<h2>Environment Settings</h2>
+								<div id="environmentSettingsList">
+									<button id="resetButton" type="button">Reset</button>
+									<button type="button">Step</button>
+									<span>Seed: <input type="input"></button></span>
+									
+								</div>
+							</div>
+							<div id="tileSettings">
+								<h2>Tile Settings</h2>
+							</div>
 						</div>
 					</div>
 					<div id="tilesetAndJson">
-						<div id="tilesetPreview">
+						<div id="tileset">
 							<h2>Tileset</h2>
+							<div id="tilesetContainer">
+
+							</div>
+							<div id="tilesetButtonContainer">
+								<button type="button">Add</button>
+								<button type="button" disabled>Remove</button>
+							</div>
 						</div>
 						<div id="jsonViewer">
 							<h2>Tileset JSON</h2>
 							<textarea id="jsonText"></textarea>
 							<div id="jsonViewerButtonContainer">
 								<button type="button">Generate</button>
-								<button type="button">Apply</button>
+								<button id="applyButton" type="button">Apply</button>
 							</div>
 						</div>
 					</div>
