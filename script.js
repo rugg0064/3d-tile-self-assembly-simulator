@@ -187,7 +187,7 @@ function addTileMeshArrayToScene(scene, tileMeshArray, x, y, z)
     });
     var key = convertXYZToKey(x, y, z);
     objectMap[key] = objects;
-    console.log("Registering new tile to: " + key);
+    //console.log("Registering new tile to: " + key);
 }
 
 const geometry = new THREE.BoxGeometry();
@@ -284,55 +284,192 @@ function removeIndex(array, index)
     return newArr;
 }
 
+//TODO: FIX THE CONSTANTS
+const matchingDirection = [
+    "z+",
+    "z-",
+    "y+",
+    "y-",
+    "x+",
+    "x-"
+]
+const antiMatchingDirection = [
+    "z-",
+    "z+",
+    "y-",
+    "y+",
+    "x-",
+    "x+"
+];
+const localPositions = [
+    [0,0,1],
+    [0,0,-1],
+    [0,1,0],
+    [0,-1,0],
+    [1,0,0],
+    [-1,0,0]
+];
+
 function spawnTile(tileIndex, x, y, z, ignoreTemperature)
 {
-    var availableIndex = findIndex(availableSpaces, convertXYZToKey(x,y,z));
-    if(!objectMap[convertXYZToKey(x,y,z)] && availableIndex != -1)
-    {
-        isValid = true;
-        const localPositions = [
-            [0,0,1],
-            [0,0,-1],
-            [0,1,0],
-            [0,-1,0],
-            [1,0,0],
-            [-1,0,0]
-        ];
+    // Conditions for placing a tile:
+    //     No tile is currently there
+    //     It is adjact to another tile
+    //     The temperature is >=2, overridden by ignoreTemperature
+    //     The colors on all adjact tiles matches exactly
+    //         If the new tile has colors, and the other is empty, that is invalid.
+    //         empty-empty is a valid connection, however.
 
-        //If the local position is a vector for x+, returns "x-" to check for matching connectors
-        const matchingDirection = [
-            "z+",
-            "z-",
-            "y+",
-            "y-",
-            "x+",
-            "x-"
-        ]
-        const antiLocalPositionDirection = [
-            "z-",
-            "z+",
-            "y-",
-            "y+",
-            "x-",
-            "x+"
-        ];
+    // Key for the position we are placing at
+    const placingTileKey = convertXYZToKey(x, y, z);
 
-        var temperature = 0;
-        for(var i = 0; i < localPositions.length; i++)
-        {
-            var position = localPositions[i];
-            var direction = matchingDirection[i];
-            var newPos = [x + position[0], y + position[1], z + position[2]];
-            var newPosName = convertXYZToKey(newPos[0], newPos[1], newPos[2]);
-            if(objectMap[newPosName])
-            { //if the tile exists
-                //console.log("Found a tile at direction: " + direction);
-                //console.log("This tile color at dir: ");
-                //console.log(tiles[tileIndex][direction]);
-                temperature += tiles[tileIndex][direction].length;
-                //console.log("new temp: " + temperature);
+    // Index of the position in the availableIndex array
+    var availableIndex = findIndex(availableSpaces, placingTileKey);
+    
+    if(!objectMap[placingTileKey])
+    { // There is no object currently in the position
+        //console.log("Location is empty.");
+        if(availableIndex != -1)
+        { // The key is in the availableIndex array
+            //console.log("Location is available.");
+            temperatureSatisfied = false;
+            if(!ignoreTemperature)
+            { // If not ignoring temperature
+                //Calculate temperature
+                //console.log("Calculating temperature.");
+                var temperature = 0;
+                for(var i = 0; i < localPositions.length; i++)
+                { // For each integer direction (up down left right forward backward)
+                    // The direction of the neighbor, ie "x+"
+                    var directionName = matchingDirection[i];
+                    // The offset to get to the neighbor, ie [0, 0, 1]
+                    var neighborOffset = localPositions[i];
+                    var neighborPosition = [x + neighborOffset[0], y + neighborOffset[1], z + neighborOffset[2]];
+                    var neighborKey = convertXYZToKey(neighborPosition[0], neighborPosition[1], neighborPosition[2]);
+                    //console.log(`Checking direction ${directionName}.`);
+                    if(objectMap[neighborKey])
+                    {
+                        // If the neighbor exists
+                        //console.log("Neighbor exists.");
+                        // Since any connection currently existing must be valid
+                        // We can add the number of connection sites this cell has in the direction of the neighbor
+                        let connectionCount = tiles[tileIndex][directionName].length;
+                        temperature += connectionCount;
+                        //console.log(`Adding ${connectionCount}. New temperature = ${temperature}`);
+                    }
+                }
+                //console.log("Final temperature: " + temperature);
+                if(temperature >= 2)
+                {
+                    //console.log("Temperature satisfied.");
+                    temperatureSatisfied = true;
+                }
+                else
+                {
+                    //console.log("Temperature not satisfied.");
+                }
+            }
+            else
+            {
+                //console.log("Ignoring Temperature");
+                temperatureSatisfied = true;
+            }
+
+            if(temperatureSatisfied)
+            { // Temperature is satisfied
+                var colorMatchSatisfied = true;
+                //Now check for color-matches on every side
+                //console.log("Checking for color match");
+                for(var i = 0; i < localPositions.length; i++)
+                { // For each integer direction
+                    // Get the offset to the neighbor
+                    var neighborOffset = localPositions[i];
+                    var neighborPosition = [x + neighborOffset[0], y + neighborOffset[1], z + neighborOffset[2]];
+                    var neighborKey = convertXYZToKey(neighborPosition[0], neighborPosition[1], neighborPosition[2]);
+                    // Tile index of the neighbor
+                    var neighborTileIndex = indexMap[neighborKey];
+                    // Name of the direction from placing to neighbor, ie x+
+                    var placingTileDirection = matchingDirection[i];
+                    //console.log(`Checking direction ${placingTileDirection}.`);
+                    if(neighborTileIndex != null)
+                    { // If there is actually a tile at this position
+                        //console.log("Tile exists");
+                        // Name of the direction from neighbor to placing, ie x-
+                        var neighborTileDirection = antiMatchingDirection[i];
+
+                        var placingConnectionColors = tiles[tileIndex][placingTileDirection];
+                        let placingConnectionCounts = {};
+                        var neighborTile = tiles[neighborTileIndex];
+                        var neighborConnectionColors = tiles[neighborTileIndex][neighborTileDirection];
+                        let neighborConnectionCounts = {};
+
+                        totalColors = [];
+                        placingConnectionColors.forEach(color => {
+                            totalColors.push(color);
+                            if(placingConnectionCounts[color] == null)
+                            {
+                                placingConnectionCounts[color] = 1;
+                            }
+                            else
+                            {
+                                placingConnectionCounts[color]++;
+                            }
+                        });
+                        neighborConnectionColors.forEach(color => {
+                            totalColors.push(color);
+                            if(neighborConnectionCounts[color] == null)
+                            {
+                                neighborConnectionCounts[color] = 1;
+                            }
+                            else
+                            {
+                                neighborConnectionCounts[color]++;
+                            }
+                        });
+                        totalColors.forEach(color => {
+                            let placingColorExists = placingConnectionCounts[color] != null;
+                            let neighborColorExist = neighborConnectionCounts[color] != null;
+                            if(placingColorExists && neighborColorExist)
+                            {
+                                if(placingConnectionCounts[color] != neighborConnectionCounts[color])
+                                {
+                                    colorMatchSatisfied = false;
+                                }
+                            }
+                            else
+                            {
+                                colorMatchSatisfied = false;
+                            }
+                        });
+                    }
+                }
+
+                if(colorMatchSatisfied)
+                {
+                    //console.log("Passed color satisfaction.");
+                    // Spawn the scene object, this function also adds the object to objectMap.
+                    addTileMeshArrayToScene(scene, generateMeshesFromObject(tiles[tileIndex]), x, y, z);
+                    // Add the index we used into the index map.
+                    indexMap[placingTileKey] = tileIndex;
+                    // Remove the current tile from available spaces, if it was in there.
+                    availableSpaces = removeIndex(availableSpaces, availableIndex);
+                    // For each neighboring position, add it to available spaces
+                    //     only if it isn't already available, and there isn't a tile there.
+                    localPositions.forEach(neighborOffset => {
+                        var neighborPos = [x + neighborOffset[0], y + neighborOffset[1], z + neighborOffset[2]];
+                        var neighborKey = convertXYZToKey(neighborPos[0], neighborPos[1], neighborPos[2]);
+                        if(findIndex(availableSpaces, neighborKey) == -1)
+                        {
+                            availableSpaces.push(neighborKey);
+                        }
+                    });
+                    return true;
+                }
             }
         }
+    }
+    return false;
+    /*
         for(var i = 0; i < localPositions.length; i++)
         {
             var position = localPositions[i];
@@ -341,13 +478,13 @@ function spawnTile(tileIndex, x, y, z, ignoreTemperature)
             var tile = tiles[indexMap[newPosName]];
             if(tile)
             {
-                console.log(tile);
-                console.log("Tile exists at: " + matchingDirection[i]);
-                var theOtherCellPosition = antiLocalPositionDirection[i];
+                //console.log(tile);
+                //console.log("Tile exists at: " + matchingDirection[i]);
+                var theOtherCellPosition = antiMatchingDirection[i];
                 var theMainCellPosition = matchingDirection[i];
-                console.log(theOtherCellPosition);
+                //console.log(theOtherCellPosition);
                 var otherCellColor = tile[theOtherCellPosition];
-                console.log(otherCellColor);
+                //console.log(otherCellColor);
                 if(otherCellColor)
                 {
                     var thisCellColor = tiles[tileIndex][theMainCellPosition];
@@ -380,7 +517,7 @@ function spawnTile(tileIndex, x, y, z, ignoreTemperature)
                     });
     
                     totalColors.forEach(color => {
-                        console.log("Color: " + color);
+                        //console.log("Color: " + color);
                         if(otherCellColor[color] != thisCellColor[color])
                         {
                             valid = false;
@@ -393,19 +530,19 @@ function spawnTile(tileIndex, x, y, z, ignoreTemperature)
 
             }
         }
-        //console.log("Final temp: " + temperature);
+        ////console.log("Final temp: " + temperature);
         if(temperature < 2 && !ignoreTemperature)
         {
-            //console.log("Bad temperature! Refusing to place");
+            ////console.log("Bad temperature! Refusing to place");
             isValid = false;
         }
         else
         {
-            //console.log("Temperature is okay.");
+            ////console.log("Temperature is okay.");
         }
         if(isValid)
         {
-            //console.log("Confirmed valid spawn point");
+            ////console.log("Confirmed valid spawn point");
             var key = convertXYZToKey(x, y, z);
             addTileMeshArrayToScene(scene, generateMeshesFromObject(tiles[tileIndex]), x, y, z);
             indexMap[key] = tileIndex;
@@ -418,12 +555,13 @@ function spawnTile(tileIndex, x, y, z, ignoreTemperature)
                     availableSpaces.push(newPosName);
                 }
             });
-            console.log("|-> true");
+            //console.log("|-> true");
             return true;
         }
     }
-    console.log("|-> false");
+    //console.log("|-> false");
     return false;
+    */
 }
 
 var tiles = [];
@@ -467,11 +605,11 @@ function randInt(a, b)
 }
 
 stepButton.addEventListener("click", event => {
-    console.log("Clicked");
+    //console.log("Clicked");
     do {
         var availableSpaceIndex = randInt(0, availableSpaces.length - 1);
         var tileIndex = randInt(0, tiles.length - 1);
         position = convertKeyToXYZ(availableSpaces[availableSpaceIndex]);
-        console.log("Spawning");
+        //console.log("Spawning");
     } while( !spawnTile(tileIndex, position[0], position[1], position[2], false) );
 });
