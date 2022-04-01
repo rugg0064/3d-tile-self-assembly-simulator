@@ -130,6 +130,19 @@ function convertXYZToKey(x, y, z)
     return "x"+x+"y"+y+"z"+z;
 }
 
+function convertKeyToXYZ(key)
+{
+    var xIndex = key.indexOf('x');
+    var yIndex = key.indexOf('y');
+    var zIndex = key.indexOf('z');
+
+    return [
+        Number(key.substring(xIndex + 1, yIndex)),
+        Number(key.substring(yIndex + 1, zIndex)),
+        Number(key.substring(zIndex + 1))
+    ];
+}
+
 function generateCubeMeshOfColorAndSize(color, size)
 {
     var geometry = new THREE.BoxGeometry(size, size, size);
@@ -163,18 +176,18 @@ function addTileMeshArrayToScene(scene, tileMeshArray, x, y, z)
         position = pair[1];
 
         var setPos = new THREE.Vector3(x, y, z);
-        setPos.multiplyScalar(1);
+        setPos.multiplyScalar(16);
         setPos.add(position);
 
         scene.add( mesh );
         mesh.position.x = setPos.x;
         mesh.position.y = setPos.y;
         mesh.position.z = setPos.z;
-        console.log(setPos);
         objects.push(mesh)
     });
     var key = convertXYZToKey(x, y, z);
     objectMap[key] = objects;
+    console.log("Registering new tile to: " + key);
 }
 
 const geometry = new THREE.BoxGeometry();
@@ -183,6 +196,7 @@ const material = new THREE.MeshBasicMaterial( { color: 0x00ff00, wireframe: true
 const CUBE_COUNT = 50;
 
 var objectMap = {}; //An (int, int, int) -> cube dictionary. Each entry is a 
+var indexMap = {};
 var availableSpaces = [];
 
 /*
@@ -220,6 +234,7 @@ setInterval(function(){
 let applyButton = document.getElementById("applyButton");
 let jsonText = document.getElementById("jsonText");
 let resetButton = document.getElementById("resetButton");
+let stepButton = document.getElementById("stepButton");
 const positions = ["x+", "x-", "y+", "y-", "z+", "z-"];
 const positionOffsets = {
     "x+": new THREE.Vector3(1, 0, 0),
@@ -242,19 +257,173 @@ function createNewTile()
     return object;
 }
 
-function 
-
-function spawnTile(tileIndex, x, y, z)
+// Yes it linear searches :(
+function findIndex(array, value)
 {
-    if(objectMap[convertXYZToKey(x,y,z)])
+    for(var i = 0; i < array.length; i++)
     {
-        addTileMeshArrayToScene(scene, generateMeshesFromObject(tiles[0]), x, y, z);
-        availableSpaces.remove([x,y,z]);
+        if(array[i] == value)
+        {
+            return i;
+        }
     }
-    else
+    return -1;
+}
+
+//Returns a copy of an array without the element at the specified index
+function removeIndex(array, index)
+{
+    newArr = [];
+    for(var i = 0; i < array.length; i++)
     {
-        return false;
+        if(i != index)
+        {
+            newArr.push(array[i]);
+        }
     }
+    return newArr;
+}
+
+function spawnTile(tileIndex, x, y, z, ignoreTemperature)
+{
+    var availableIndex = findIndex(availableSpaces, convertXYZToKey(x,y,z));
+    if(!objectMap[convertXYZToKey(x,y,z)] && availableIndex != -1)
+    {
+        isValid = true;
+        const localPositions = [
+            [0,0,1],
+            [0,0,-1],
+            [0,1,0],
+            [0,-1,0],
+            [1,0,0],
+            [-1,0,0]
+        ];
+
+        //If the local position is a vector for x+, returns "x-" to check for matching connectors
+        const matchingDirection = [
+            "z+",
+            "z-",
+            "y+",
+            "y-",
+            "x+",
+            "x-"
+        ]
+        const antiLocalPositionDirection = [
+            "z-",
+            "z+",
+            "y-",
+            "y+",
+            "x-",
+            "x+"
+        ];
+
+        var temperature = 0;
+        for(var i = 0; i < localPositions.length; i++)
+        {
+            var position = localPositions[i];
+            var direction = matchingDirection[i];
+            var newPos = [x + position[0], y + position[1], z + position[2]];
+            var newPosName = convertXYZToKey(newPos[0], newPos[1], newPos[2]);
+            if(objectMap[newPosName])
+            { //if the tile exists
+                //console.log("Found a tile at direction: " + direction);
+                //console.log("This tile color at dir: ");
+                //console.log(tiles[tileIndex][direction]);
+                temperature += tiles[tileIndex][direction].length;
+                //console.log("new temp: " + temperature);
+            }
+        }
+        for(var i = 0; i < localPositions.length; i++)
+        {
+            var position = localPositions[i];
+            var newPos = [x + position[0], y + position[1], z + position[2]];
+            var newPosName = convertXYZToKey(newPos[0], newPos[1], newPos[2]);
+            var tile = tiles[indexMap[newPosName]];
+            if(tile)
+            {
+                console.log(tile);
+                console.log("Tile exists at: " + matchingDirection[i]);
+                var theOtherCellPosition = antiLocalPositionDirection[i];
+                var theMainCellPosition = matchingDirection[i];
+                console.log(theOtherCellPosition);
+                var otherCellColor = tile[theOtherCellPosition];
+                console.log(otherCellColor);
+                if(otherCellColor)
+                {
+                    var thisCellColor = tiles[tileIndex][theMainCellPosition];
+    
+                    totalColors = [];
+                    otherCellCounter = {};
+                    thisCellCounter = {};
+                    otherCellColor.forEach(color => {
+                        totalColors.push(color);
+                        if(!otherCellCounter[color])
+                        {
+                            otherCellColor[color] = 1;
+                        }
+                        else
+                        {
+                            otherCellColor[color]++;
+                        }
+                    });
+    
+                    thisCellColor.forEach(color => {
+                        totalColors.push(color);
+                        if(!thisCellColor[color])
+                        {
+                            thisCellColor[color] = 1;
+                        }
+                        else
+                        {
+                            thisCellColor[color]++;
+                        }
+                    });
+    
+                    totalColors.forEach(color => {
+                        console.log("Color: " + color);
+                        if(otherCellColor[color] != thisCellColor[color])
+                        {
+                            valid = false;
+                        }
+                    });
+                }
+            }
+            else
+            { //If tile doesnt exist, doesn't matter
+
+            }
+        }
+        //console.log("Final temp: " + temperature);
+        if(temperature < 2 && !ignoreTemperature)
+        {
+            //console.log("Bad temperature! Refusing to place");
+            isValid = false;
+        }
+        else
+        {
+            //console.log("Temperature is okay.");
+        }
+        if(isValid)
+        {
+            //console.log("Confirmed valid spawn point");
+            var key = convertXYZToKey(x, y, z);
+            addTileMeshArrayToScene(scene, generateMeshesFromObject(tiles[tileIndex]), x, y, z);
+            indexMap[key] = tileIndex;
+            availableSpaces = removeIndex(availableSpaces, availableIndex);
+            localPositions.forEach(position => {
+                var newPos = [x + position[0], y + position[1], z + position[2]];
+                var newPosName = convertXYZToKey(newPos[0], newPos[1], newPos[2]);
+                if(findIndex(availableSpaces, newPosName) == -1)
+                {
+                    availableSpaces.push(newPosName);
+                }
+            });
+            console.log("|-> true");
+            return true;
+        }
+    }
+    console.log("|-> false");
+    return false;
 }
 
 var tiles = [];
@@ -285,5 +454,24 @@ resetButton.addEventListener("click", event => {
         })
     });
     objectMap = {};
-    addTileMeshArrayToScene(scene, generateMeshesFromObject(tiles[0]), 0, 0, 0);
+    indexMap = {};
+    availableSpaces = [ convertXYZToKey(0,0,0) ];
+    spawnTile(0, 0, 0, 0, true);
+    //addTileMeshArrayToScene(scene, generateMeshesFromObject(tiles[0]), 0, 0, 0);
+});
+
+//Returns a random value between [a,b] both inclusive
+function randInt(a, b)
+{
+    return Math.floor((Math.random() * (b + 1)) + a);
+}
+
+stepButton.addEventListener("click", event => {
+    console.log("Clicked");
+    do {
+        var availableSpaceIndex = randInt(0, availableSpaces.length - 1);
+        var tileIndex = randInt(0, tiles.length - 1);
+        position = convertKeyToXYZ(availableSpaces[availableSpaceIndex]);
+        console.log("Spawning");
+    } while( !spawnTile(tileIndex, position[0], position[1], position[2], false) );
 });
