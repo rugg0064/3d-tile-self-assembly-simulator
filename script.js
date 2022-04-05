@@ -21,6 +21,7 @@ window.addEventListener( 'resize', () => {
     renderer.setSize( canvas.parentElement.offsetHeight, canvas.parentElement.offsetHeight );
 });
 
+let enableStart = true;
 var mouseDown = false;
 keysDown = {
     'w': false,
@@ -89,7 +90,7 @@ canvas.addEventListener('keyup', (event) => {
 setInterval(handleMovement, 0.05);
 function handleMovement()
 {
-    const sensitivity = 0.5;
+    const sensitivity = 5;
 
     var forward = getVector3FromYawPitch(cameraPitch, cameraYaw);
     var newForward = new THREE.Vector3( 
@@ -211,7 +212,7 @@ for(let i = 0; i < CUBE_COUNT; i++)
 }
 */
 
-camera.position.z = 20;
+camera.position.z = 500;
 
 function animate() {
     requestAnimationFrame( animate );
@@ -235,6 +236,10 @@ let applyButton = document.getElementById("applyButton");
 let jsonText = document.getElementById("jsonText");
 let resetButton = document.getElementById("resetButton");
 let stepButton = document.getElementById("stepButton");
+let startButton = document.getElementById("startButton");
+let stopButton = document.getElementById("stopButton");
+let delayInput = document.getElementById("delayInput");
+
 const positions = ["x+", "x-", "y+", "y-", "z+", "z-"];
 const positionOffsets = {
     "x+": new THREE.Vector3(1, 0, 0),
@@ -469,99 +474,6 @@ function spawnTile(tileIndex, x, y, z, ignoreTemperature)
         }
     }
     return false;
-    /*
-        for(var i = 0; i < localPositions.length; i++)
-        {
-            var position = localPositions[i];
-            var newPos = [x + position[0], y + position[1], z + position[2]];
-            var newPosName = convertXYZToKey(newPos[0], newPos[1], newPos[2]);
-            var tile = tiles[indexMap[newPosName]];
-            if(tile)
-            {
-                //console.log(tile);
-                //console.log("Tile exists at: " + matchingDirection[i]);
-                var theOtherCellPosition = antiMatchingDirection[i];
-                var theMainCellPosition = matchingDirection[i];
-                //console.log(theOtherCellPosition);
-                var otherCellColor = tile[theOtherCellPosition];
-                //console.log(otherCellColor);
-                if(otherCellColor)
-                {
-                    var thisCellColor = tiles[tileIndex][theMainCellPosition];
-    
-                    totalColors = [];
-                    otherCellCounter = {};
-                    thisCellCounter = {};
-                    otherCellColor.forEach(color => {
-                        totalColors.push(color);
-                        if(!otherCellCounter[color])
-                        {
-                            otherCellColor[color] = 1;
-                        }
-                        else
-                        {
-                            otherCellColor[color]++;
-                        }
-                    });
-    
-                    thisCellColor.forEach(color => {
-                        totalColors.push(color);
-                        if(!thisCellColor[color])
-                        {
-                            thisCellColor[color] = 1;
-                        }
-                        else
-                        {
-                            thisCellColor[color]++;
-                        }
-                    });
-    
-                    totalColors.forEach(color => {
-                        //console.log("Color: " + color);
-                        if(otherCellColor[color] != thisCellColor[color])
-                        {
-                            valid = false;
-                        }
-                    });
-                }
-            }
-            else
-            { //If tile doesnt exist, doesn't matter
-
-            }
-        }
-        ////console.log("Final temp: " + temperature);
-        if(temperature < 2 && !ignoreTemperature)
-        {
-            ////console.log("Bad temperature! Refusing to place");
-            isValid = false;
-        }
-        else
-        {
-            ////console.log("Temperature is okay.");
-        }
-        if(isValid)
-        {
-            ////console.log("Confirmed valid spawn point");
-            var key = convertXYZToKey(x, y, z);
-            addTileMeshArrayToScene(scene, generateMeshesFromObject(tiles[tileIndex]), x, y, z);
-            indexMap[key] = tileIndex;
-            availableSpaces = removeIndex(availableSpaces, availableIndex);
-            localPositions.forEach(position => {
-                var newPos = [x + position[0], y + position[1], z + position[2]];
-                var newPosName = convertXYZToKey(newPos[0], newPos[1], newPos[2]);
-                if(findIndex(availableSpaces, newPosName) == -1)
-                {
-                    availableSpaces.push(newPosName);
-                }
-            });
-            //console.log("|-> true");
-            return true;
-        }
-    }
-    //console.log("|-> false");
-    return false;
-    */
 }
 
 var tiles = [];
@@ -595,6 +507,8 @@ resetButton.addEventListener("click", event => {
     indexMap = {};
     availableSpaces = [ convertXYZToKey(0,0,0) ];
     spawnTile(0, 0, 0, 0, true);
+    enableStart = true;
+    applyDisabledButtons();
     //addTileMeshArrayToScene(scene, generateMeshesFromObject(tiles[0]), 0, 0, 0);
 });
 
@@ -604,12 +518,49 @@ function randInt(a, b)
     return Math.floor((Math.random() * (b + 1)) + a);
 }
 
-stepButton.addEventListener("click", event => {
-    //console.log("Clicked");
+function step()
+{
     do {
         var availableSpaceIndex = randInt(0, availableSpaces.length - 1);
         var tileIndex = randInt(0, tiles.length - 1);
         position = convertKeyToXYZ(availableSpaces[availableSpaceIndex]);
         //console.log("Spawning");
     } while( !spawnTile(tileIndex, position[0], position[1], position[2], false) );
+
+}
+
+stepButton.addEventListener("click", step);
+let timer;
+
+function applyDisabledButtons()
+{
+    startButton.disabled = !enableStart;
+    stopButton.disabled = enableStart;
+    if(stopButton.disabled)
+    {
+        stopLoopTimer();
+    }
+}
+
+startButton.addEventListener("click", event => {
+    if(enableStart)
+    {
+        let value = parseFloat(delayInput.value);
+        if(value)
+        {
+            timer = setInterval(step, value);
+            enableStart = false;
+            applyDisabledButtons();
+        }
+    }
+});
+
+function stopLoopTimer()
+{
+    clearInterval(timer);
+}
+
+stopButton.addEventListener("click", event => {
+    enableStart = true;
+    applyDisabledButtons();
 });

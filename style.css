@@ -70,6 +70,7 @@ h2 {
             }
             #environmentSettings {
                 background-color: maroon;
+                color: white;
             }
                 #environmentSettingsList {
                     display: flex;
