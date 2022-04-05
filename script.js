@@ -1,6 +1,6 @@
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 1000 );
+const camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 10000 );
 const tileEditorCamera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 1000 );
 
 const deg2rad = Math.PI/180;
@@ -22,7 +22,7 @@ window.addEventListener( 'resize', () => {
 });
 
 let enableStart = true;
-var mouseDown = false;
+let mouseDown = false;
 keysDown = {
     'w': false,
     'a': false,
@@ -126,6 +126,8 @@ function handleMovement()
     camera.position.add(finalMoveOffset);
 }
 
+let instances;
+let placeCount = 0;
 function convertXYZToKey(x, y, z)
 {
     return "x"+x+"y"+y+"z"+z;
@@ -146,9 +148,9 @@ function convertKeyToXYZ(key)
 
 function generateCubeMeshOfColorAndSize(color, size)
 {
-    var geometry = new THREE.BoxGeometry(size, size, size);
-    var material = new THREE.MeshBasicMaterial( {color: color} );
-    var mesh = new THREE.Mesh( geometry, material );
+    let geometry = new THREE.BoxGeometry(size, size, size);
+    let material = new THREE.MeshBasicMaterial( {color: color} );
+    let mesh = new THREE.Mesh( geometry, material );
     return mesh;
 }
 
@@ -169,6 +171,8 @@ function generateMeshesFromObject(tileObject)
     return meshes;
 }
 
+
+/*
 function addTileMeshArrayToScene(scene, tileMeshArray, x, y, z)
 {
     var objects = [];
@@ -190,47 +194,22 @@ function addTileMeshArrayToScene(scene, tileMeshArray, x, y, z)
     objectMap[key] = objects;
     //console.log("Registering new tile to: " + key);
 }
-
-const geometry = new THREE.BoxGeometry();
-const material = new THREE.MeshBasicMaterial( { color: 0x00ff00, wireframe: true } );
-
-const CUBE_COUNT = 50;
+*/
 
 var objectMap = {}; //An (int, int, int) -> cube dictionary. Each entry is a 
 var indexMap = {};
 var availableSpaces = [];
-
-/*
-let cubes = [];
-for(let i = 0; i < CUBE_COUNT; i++)
-{
-    var cube = new THREE.Mesh( geometry, material );
-    cube.position.x = i;
-    scene.add( cube );
-    cubes.push(cube);
-    objectMap[convertXYZToKey(i, 0, 0)] = [cube];
-}
-*/
-
+let dummy = new THREE.Object3D();
 camera.position.z = 500;
 
+//Basic skeleton function to keep things rendering
 function animate() {
     requestAnimationFrame( animate );
     renderer.render( scene, camera );
     tileEditorRenderer.render( scene, tileEditorCamera );
-
 }
-animate();
+animate
 
-/*
-setInterval(function(){
-    for(let i = 0; i < CUBE_COUNT; i++)
-    {
-        cubes[i].rotation.x += 0.005 * i;
-        //cubes[i].rotation.y += 0.01;
-    }
-}, 5);
-*/
 
 let applyButton = document.getElementById("applyButton");
 let jsonText = document.getElementById("jsonText");
@@ -453,7 +432,27 @@ function spawnTile(tileIndex, x, y, z, ignoreTemperature)
                 {
                     //console.log("Passed color satisfaction.");
                     // Spawn the scene object, this function also adds the object to objectMap.
-                    addTileMeshArrayToScene(scene, generateMeshesFromObject(tiles[tileIndex]), x, y, z);
+                    
+                    //Replacing this function
+                    //addTileMeshArrayToScene(scene, generateMeshesFromObject(tiles[tileIndex]), x, y, z);
+                    let instance = instances[tileIndex];
+                    for(let i = 0; i < instance.instances.length; i++)
+                    {
+                        //For each subcube within this tile
+                        let offset = instance.offsets[i]; 
+                        dummy.position.set((x*16) + offset.x, 
+                                           (y*16) + offset.y,
+                                           (z*16) + offset.z + 10);
+                        dummy.updateMatrix();
+                        let instanceMesh = instance.instances[i]; 
+                        instanceMesh.setMatrixAt( instance.nextIndex, dummy.matrix );
+                        instanceMesh.instanceMatrix.needsUpdate = true;
+                        //console.log(dummy.position);
+                        //Object map must be dealt with
+                    }
+                    instance.nextIndex++;
+                    objectMap[placingTileKey] = true;
+                    
                     // Add the index we used into the index map.
                     indexMap[placingTileKey] = tileIndex;
                     // Remove the current tile from available spaces, if it was in there.
@@ -493,6 +492,47 @@ applyButton.addEventListener("click", event => {
         });
         tiles.push(newTile);
     });
+
+    instances = []
+    for(let i = 0; i < tiles.length; i++)
+    {
+        let tileInstance = {};
+        instances[i] = tileInstance;
+        let tile = tiles[i];
+        
+        tileInstance.nextIndex = 0;
+        tileInstance.instances = [];
+        tileInstance.offsets = [];
+        const instanceCount = 2000;
+        let mainMaterial = new THREE.MeshBasicMaterial( {color: tile.color} );
+        let mainGeometry  = new THREE.BoxGeometry(12, 12, 12);
+        let mainPosition = new THREE.Vector3(0, 0, 0);
+        
+        let mainInstanceMesh = new THREE.InstancedMesh(mainGeometry, mainMaterial, instanceCount);
+        scene.add(mainInstanceMesh);
+        tileInstance.instances.push(mainInstanceMesh);
+        tileInstance.offsets.push(mainPosition);
+        
+        
+        for(let j = 0; j < matchingDirection.length; j++)
+        {
+            direction = matchingDirection[j];
+            let directionColors = tile[direction];
+            for(let k = 0; k < directionColors.length; k++)
+            {
+                let subCubeGeometry = new THREE.BoxGeometry(2, 2, 2);
+                let color = directionColors[k];
+                let material = new THREE.MeshBasicMaterial( {color: color} );
+                let offset = positionOffsets[direction].clone();
+                offset.multiplyScalar(7);
+                let mesh = new THREE.InstancedMesh(subCubeGeometry, material, instanceCount);
+                tileInstance.instances.push(mesh);
+                tileInstance.offsets.push(offset);
+                scene.add(mesh);
+            }
+        }
+    }
+    //console.log(instances);
 });
 
 resetButton.addEventListener("click", event => {
@@ -505,9 +545,10 @@ resetButton.addEventListener("click", event => {
     });
     objectMap = {};
     indexMap = {};
-    availableSpaces = [ convertXYZToKey(0,0,0) ];
+    availableSpaces = [ convertXYZToKey(0, 0, 0) ];
     spawnTile(0, 0, 0, 0, true);
     enableStart = true;
+    placeCount = 1;
     applyDisabledButtons();
     //addTileMeshArrayToScene(scene, generateMeshesFromObject(tiles[0]), 0, 0, 0);
 });
@@ -520,25 +561,28 @@ function randInt(a, b)
 
 function step()
 {
+    let attemptCount = 0;
     do {
+        attemptCount++;
         var availableSpaceIndex = randInt(0, availableSpaces.length - 1);
         var tileIndex = randInt(0, tiles.length - 1);
         position = convertKeyToXYZ(availableSpaces[availableSpaceIndex]);
         //console.log("Spawning");
     } while( !spawnTile(tileIndex, position[0], position[1], position[2], false) );
-
+    placeCount++;
+    //console.log(`Tried ${attemptCount} times before spawning (${placeCount} tiles now).`);
+    //console.log(attemptCount);
 }
 
 stepButton.addEventListener("click", step);
-let timer;
-
+let stepTimer;
 function applyDisabledButtons()
 {
     startButton.disabled = !enableStart;
     stopButton.disabled = enableStart;
     if(stopButton.disabled)
     {
-        stopLoopTimer();
+        stopStepTimer();
     }
 }
 
@@ -548,16 +592,16 @@ startButton.addEventListener("click", event => {
         let value = parseFloat(delayInput.value);
         if(value)
         {
-            timer = setInterval(step, value);
+            stepTimer = setInterval(step, value);
             enableStart = false;
             applyDisabledButtons();
         }
     }
 });
 
-function stopLoopTimer()
+function stopStepTimer()
 {
-    clearInterval(timer);
+    clearInterval(stepTimer);
 }
 
 stopButton.addEventListener("click", event => {
