@@ -164,7 +164,8 @@ let materialsToDispose = [];
 let geometriesToDispose = [];
 let placeCount = 0;
 let tiles = [];
-const instanceCount = 500;
+const DEFAULT_INSTANCE_COUNT = 500;
+let instanceCount = DEFAULT_INSTANCE_COUNT;
 
 //A map of "xxyyzz" keys mapping placed tiles to their index.
 let indexMap = {};
@@ -183,7 +184,13 @@ let stepButton = document.getElementById("stepButton");
 let startButton = document.getElementById("startButton");
 let stopButton = document.getElementById("stopButton");
 let delayInput = document.getElementById("delayInput");
+let seedInput = document.getElementById("seedInput");
+let instanceCountInput = document.getElementById("instanceCountInput");
+let generateButton = document.getElementById("generateButton");
+instanceCountInput.value = DEFAULT_INSTANCE_COUNT;
 let disableTable = [];
+let rng;
+
 
 const positions = ["x+", "x-", "y+", "y-", "z+", "z-"];
 const positionOffsets = {
@@ -335,6 +342,10 @@ function buildDisableTable()
 
 function spawnTile(tileIndex, x, y, z, ignoreTemperature)
 {
+    if(!availableSpaces[tileIndex])
+    {
+        return;
+    }
     // Conditions for placing a tile:
     //     No tile is currently there
     //     It is adjact to another tile
@@ -441,11 +452,12 @@ function spawnTile(tileIndex, x, y, z, ignoreTemperature)
                         let offset = instance.offsets[i]; 
                         dummy.position.set((x*16) + offset.x, 
                                            (y*16) + offset.y,
-                                           (z*16) + offset.z + 10);
+                                           (z*16) + offset.z);
                         dummy.updateMatrix();
                         let instanceMesh = instance.instances[i]; 
-                        instanceMesh.setMatrixAt( instance.nextIndex, dummy.matrix );
+                        instanceMesh.setMatrixAt(instance.nextIndex, dummy.matrix);
                         instanceMesh.instanceMatrix.needsUpdate = true;
+                        instanceMesh.count = Math.min(instanceCount, instanceMesh.count + 1);
                         //console.log(dummy.position);
                     }
                     instance.nextIndex++;
@@ -495,44 +507,11 @@ function spawnTile(tileIndex, x, y, z, ignoreTemperature)
     return false;
 }
 
-applyButton.addEventListener("click", event => {
-    eraseInstances();
-    if(materialsToDispose)
-    {
-        materialsToDispose.forEach(material => {
-            material.dispose();
-        });
-    }
-    if(geometriesToDispose)
-    {
-        geometriesToDispose.forEach(geometry => {
-            geometry.dispose();
-        });
-    }
-    materialsToDispose = [];
-    geometriesToDispose = [];
-
-    tiles = [];
-    let json = JSON.parse(jsonText.value);
-    
-    let jsonTileArray = json["tiles"];
-    jsonTileArray.forEach(jsonTileObject => {
-        newTile = createNewTile();
-        newTile["color"] = Number(jsonTileObject["color"]);
-        positions.forEach( position => {
-            jsonTileObject[position].forEach( colorString => {
-                newTile[position].push(Number(colorString));
-            });
-            //newTile[position] = Number(jsonTileObject[position]);
-        });
-        tiles.push(newTile);
-    });
-
+function buildInstanceMeshes()
+{
     instances = []
-    availableSpaces = [];
     for(let i = 0; i < tiles.length; i++)
     {
-        availableSpaces.push(new Set());
         //Create the object which we will add to the instances array
         let tileInstance = {};
         instances[i] = tileInstance;
@@ -578,7 +557,40 @@ applyButton.addEventListener("click", event => {
             }
         }
     }
-    buildDisableTable();
+}
+
+applyButton.addEventListener("click", event => {
+    eraseInstances();
+    if(materialsToDispose)
+    {
+        materialsToDispose.forEach(material => {
+            material.dispose();
+        });
+    }
+    if(geometriesToDispose)
+    {
+        geometriesToDispose.forEach(geometry => {
+            geometry.dispose();
+        });
+    }
+    materialsToDispose = [];
+    geometriesToDispose = [];
+
+    tiles = [];
+    let json = JSON.parse(jsonText.value);
+    
+    let jsonTileArray = json["tiles"];
+    jsonTileArray.forEach(jsonTileObject => {
+        newTile = createNewTile();
+        newTile["color"] = Number(jsonTileObject["color"]);
+        positions.forEach( position => {
+            jsonTileObject[position].forEach( colorString => {
+                newTile[position].push(Number(colorString));
+            });
+            //newTile[position] = Number(jsonTileObject[position]);
+        });
+        tiles.push(newTile);
+    });
     reset();
     //console.log(instances);
 });
@@ -587,15 +599,9 @@ function eraseInstances()
 {
     if(instances)
     {
-        dummy.position.set(-5000000, -5000000, -5000000);
-        dummy.updateMatrix();
         instances.forEach(instanceStructure => {
             instanceStructure.instances.forEach(instance => {
-                for(let i = 0; i < instanceCount; i++)
-                {
-                    instance.setMatrixAt(i, dummy.matrix);
-                }
-                instance.instanceMatrix.needsUpdate = true;
+                instance.count = 0;
             });
         });
     }
@@ -603,11 +609,36 @@ function eraseInstances()
 
 function reset()
 {
+    if(seedInput.value)
+    {
+        rng = new Math.seedrandom(seedInput.value);
+    }
+    else
+    {
+        rng = new Math.seedrandom(Math.random());
+    }
+
     eraseInstances();
+    let result = parseInt(instanceCountInput.value);
+    if(isNaN(result))
+    {
+        instanceCountInput.value = DEFAULT_INSTANCE_COUNT;
+        result = DEFAULT_INSTANCE_COUNT;
+    }
+    instanceCount = result;
+    
+    buildInstanceMeshes();
+    buildDisableTable();
 
     indexMap = {};
     let originKey = convertXYZToKey(0, 0, 0)
-    //availableSpaces = [ originKey ];   
+    //availableSpaces = [ originKey ];
+
+    availableSpaces = [];
+    for(let i = 0; i < tiles.length; i++)
+    {
+        availableSpaces.push(new Set());
+    }
     availableSpaces.forEach(availableSet => {
         availableSet.add(originKey);
     });
@@ -626,16 +657,25 @@ resetButton.addEventListener("click", event => {
 //Returns a random value between [a,b] both inclusive
 function randInt(a, b)
 {
-    return Math.floor((Math.random() * (b + 1)) + a);
+    return Math.floor((rng() * (b + 1)) + a);
+    //return Math.floor((Math.random() * (b + 1)) + a);
 }
 
 function step()
 {
+    if(!tiles || tiles.size <= 0)
+    {
+        return false;
+    }
+
+    const MAX_TRIES = 500;
+
     let attemptCount = 0;
     let tileIndex;
     let availableSpaceIndex;
     let position;
     let exit = false;
+    let outOfTries = false;
     do {
         attemptCount++;
         
@@ -648,9 +688,8 @@ function step()
         }
         //console.log(`Sum ${sum}`);
         let tileIndex = 0;
-        let randomNumber = randInt(0, sum-1);
-        //console.log(`Searching for ${randomNumber}`);
-        sum -= availableSpaces[0].size
+        let randomNumber = randInt(0, sum);
+        sum -= availableSpaces[tileIndex].size
         while(sum > randomNumber)
         {
             tileIndex++;
@@ -658,10 +697,13 @@ function step()
             sum -= availableSpaces[tileIndex].size;
         }
 
-
         //console.log(availableSpaces[tileIndex].size);
         if(availableSpaces[tileIndex].size == 0)
         {
+            if(!exit && attemptCount >= MAX_TRIES)
+            {
+                outOfTries = true;
+            }
             continue;
         }
 
@@ -672,11 +714,26 @@ function step()
         //console.log(position);
         //console.log("Spawning");
         exit = spawnTile(tileIndex, position[0], position[1], position[2], false);
-    } while( !exit && attemptCount < 1000);
-    placeCount++;
+        //console.log(`${attemptCount}: ${exit}`);
+        if(!exit && attemptCount >= MAX_TRIES)
+        {
+            outOfTries = true;
+        }
+    } while( !exit && !outOfTries);
+    if(exit)
+    {
+        placeCount++;
+    }
     //console.log(`Tried ${attemptCount} times before spawning (${placeCount} tiles now).`);
     //console.log(attemptCount);
+    return !outOfTries;
 }
+
+generateButton.addEventListener("click", (event) => {
+    let output = {};
+    output.tiles = tiles;
+    jsonText.value = JSON.stringify(output, null, 4);
+});
 
 stepButton.addEventListener("click", step);
 let stepTimer;
@@ -694,9 +751,17 @@ startButton.addEventListener("click", event => {
     if(enableStart)
     {
         let value = parseFloat(delayInput.value);
-        if(value)
+        if(value && tiles && tiles.length > 0)
         {
-            stepTimer = setInterval(step, value);
+            stepTimer = setInterval(function() {
+                let succeded = step();
+                if(!succeded)
+                {
+                    enableStart = true;
+                    applyDisabledButtons();
+                    stopStepTimer();
+                }
+            }, value);
             enableStart = false;
             applyDisabledButtons();
         }

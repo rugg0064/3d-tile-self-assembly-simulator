@@ -8,6 +8,7 @@
 	</head>
 
 	<script src="./three.js"></script>
+	<script src="./seedrandom.js"></script>
 	<script src="./script.js" defer> </script>
 
 	<body>
@@ -25,7 +26,8 @@
 					<button id="startButton" type="button">Start</button>
 					<div>Delay: <input type="input" id="delayInput" value=0.00005></input></div>
 					<button id="stopButton" type="button" disabled>Stop</button>
-					<div>Seed: <input type="input"></input></div>
+					<div>Seed: <input type="input" id="seedInput"></input></div>
+					<div>Max Instance Count: <input type="number" id="instanceCountInput" value=4000></input></div>
 				</div>
 			</div>
 			<div id="secondColumn">
@@ -39,7 +41,7 @@
 					<textarea id="jsonText"></textarea>
 				</div>
 				<div id="jsonButtons">
-					<button type="button">Generate</button>
+					<button type="button" id="generateButton">Generate</button>
 					<button id="applyButton" type="button">Apply</button>
 				</div>
 			</div>
