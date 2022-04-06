@@ -5,13 +5,13 @@ const tileEditorCamera = new THREE.PerspectiveCamera( 60, window.innerWidth / wi
 
 const deg2rad = Math.PI/180;
 
-let canvas = document.getElementById("mainCanvas");
+const canvas = document.getElementById("mainCanvas");
 const renderer = new THREE.WebGLRenderer( { 
     canvas: canvas 
 });
 renderer.setSize( canvas.parentElement.offsetHeight, canvas.parentElement.offsetHeight );
 
-let tileEditorCanvas = document.getElementById("tileViewerCanvas");
+const tileEditorCanvas = document.getElementById("tileViewerCanvas");
 const tileEditorRenderer = new THREE.WebGLRenderer( { 
     canvas: tileEditorCanvas 
 });
@@ -48,8 +48,9 @@ function getVector3FromYawPitch(yaw, pitch)
     );
 }
 
-var cameraYaw = 0;
-var cameraPitch = 0;
+camera.position.z = 500;
+let cameraYaw = 0;
+let cameraPitch = 0;
 canvas.addEventListener('mousemove', (event) => {
     if(mouseDown)
     {
@@ -58,8 +59,8 @@ canvas.addEventListener('mousemove', (event) => {
         cameraPitch +=  (lastOffsetY - event.offsetY) * sensitivity;
         lastOffsetX = event.offsetX;
         lastOffsetY = event.offsetY;
-        var cameraLookAtOffset = getVector3FromYawPitch(cameraYaw, cameraPitch)
-        var tempVector = new THREE.Vector3(0, 0, 0, 'XYZ');
+        let cameraLookAtOffset = getVector3FromYawPitch(cameraYaw, cameraPitch)
+        let tempVector = new THREE.Vector3(0, 0, 0, 'XYZ');
         tempVector.add(camera.position);
         tempVector.add(cameraLookAtOffset);
         camera.lookAt(tempVector);
@@ -92,31 +93,31 @@ function handleMovement()
 {
     const sensitivity = 5;
 
-    var forward = getVector3FromYawPitch(cameraPitch, cameraYaw);
-    var newForward = new THREE.Vector3( 
+    let forward = getVector3FromYawPitch(cameraPitch, cameraYaw);
+    let newForward = new THREE.Vector3( 
         forward.y,
         0,
         forward.z
     );
     newForward.normalize();
-    var forwardAmount = (keysDown['w'] ? 1 : 0) + (keysDown['s'] ? -1 : 0);
+    let forwardAmount = (keysDown['w'] ? 1 : 0) + (keysDown['s'] ? -1 : 0);
     newForward.multiplyScalar(forwardAmount);
 
-    var right = getVector3FromYawPitch(cameraPitch, cameraYaw + (90 * deg2rad));
-    var newRight = new THREE.Vector3( 
+    let right = getVector3FromYawPitch(cameraPitch, cameraYaw + (90 * deg2rad));
+    let newRight = new THREE.Vector3( 
         right.y,
         0,
         right.z
     );
     newRight.normalize();
-    var rightAmount = (keysDown['d'] ? 1 : 0) + (keysDown['a'] ? -1 : 0);
+    let rightAmount = (keysDown['d'] ? 1 : 0) + (keysDown['a'] ? -1 : 0);
     newRight.multiplyScalar(rightAmount);
 
-    var up = new THREE.Vector3(0, 1, 0);
-    var upAmount = (keysDown[' '] ? 1 : 0) + (keysDown['Control'] ? -1 : 0);
+    let up = new THREE.Vector3(0, 1, 0);
+    let upAmount = (keysDown[' '] ? 1 : 0) + (keysDown['Control'] ? -1 : 0);
     up.multiplyScalar(upAmount); 
 
-    var finalMoveOffset = new THREE.Vector3(0, 0, 0);
+    let finalMoveOffset = new THREE.Vector3(0, 0, 0);
     finalMoveOffset.add(newForward);
     finalMoveOffset.add(newRight);
     finalMoveOffset.add(up);
@@ -127,89 +128,21 @@ function handleMovement()
 }
 
 let instances;
+let materialsToDispose = [];
+let geometriesToDispose = [];
 let placeCount = 0;
-function convertXYZToKey(x, y, z)
-{
-    return "x"+x+"y"+y+"z"+z;
-}
+let tiles = [];
+const instanceCount = 15000;
 
-function convertKeyToXYZ(key)
-{
-    var xIndex = key.indexOf('x');
-    var yIndex = key.indexOf('y');
-    var zIndex = key.indexOf('z');
+//A map of "xxyyzz" keys mapping placed tiles to their index.
+let indexMap = {};
 
-    return [
-        Number(key.substring(xIndex + 1, yIndex)),
-        Number(key.substring(yIndex + 1, zIndex)),
-        Number(key.substring(zIndex + 1))
-    ];
-}
+// Used to intelligently guess the next available space
+// A list of sets, corresponding to where the tile at index I might be allowed to go.
+let availableSpaces = [];
 
-function generateCubeMeshOfColorAndSize(color, size)
-{
-    let geometry = new THREE.BoxGeometry(size, size, size);
-    let material = new THREE.MeshBasicMaterial( {color: color} );
-    let mesh = new THREE.Mesh( geometry, material );
-    return mesh;
-}
-
-//Generates a list in the form
-// [ [Mesh, Offset], [Mesh, Offset], . . . [Mesh, Offset] ]
-//TODO: Position the connector meshes
-function generateMeshesFromObject(tileObject)
-{
-    meshes = [];
-    meshes.push([generateCubeMeshOfColorAndSize(tileObject["color"], 12), new THREE.Vector3(0, 0, 0)]);
-    
-    positions.forEach(position => {
-        tileObject[position].forEach(connectorColor => {
-            meshes.push( [generateCubeMeshOfColorAndSize(connectorColor, 2), positionOffsets[position].clone().multiplyScalar(7)] );
-        });
-    });
-
-    return meshes;
-}
-
-
-/*
-function addTileMeshArrayToScene(scene, tileMeshArray, x, y, z)
-{
-    var objects = [];
-    tileMeshArray.forEach(pair => {
-        mesh = pair[0];
-        position = pair[1];
-
-        var setPos = new THREE.Vector3(x, y, z);
-        setPos.multiplyScalar(16);
-        setPos.add(position);
-
-        scene.add( mesh );
-        mesh.position.x = setPos.x;
-        mesh.position.y = setPos.y;
-        mesh.position.z = setPos.z;
-        objects.push(mesh)
-    });
-    var key = convertXYZToKey(x, y, z);
-    objectMap[key] = objects;
-    //console.log("Registering new tile to: " + key);
-}
-*/
-
-var objectMap = {}; //An (int, int, int) -> cube dictionary. Each entry is a 
-var indexMap = {};
-var availableSpaces = [];
+// Used to position things and then grab the translation matrix for instance meshes.
 let dummy = new THREE.Object3D();
-camera.position.z = 500;
-
-//Basic skeleton function to keep things rendering
-function animate() {
-    requestAnimationFrame( animate );
-    renderer.render( scene, camera );
-    tileEditorRenderer.render( scene, tileEditorCamera );
-}
-animate
-
 
 let applyButton = document.getElementById("applyButton");
 let jsonText = document.getElementById("jsonText");
@@ -218,6 +151,7 @@ let stepButton = document.getElementById("stepButton");
 let startButton = document.getElementById("startButton");
 let stopButton = document.getElementById("stopButton");
 let delayInput = document.getElementById("delayInput");
+let disableTable = [];
 
 const positions = ["x+", "x-", "y+", "y-", "z+", "z-"];
 const positionOffsets = {
@@ -231,44 +165,6 @@ const positionOffsets = {
     "z-": new THREE.Vector3(0, 0, -1),
 }
 
-function createNewTile()
-{
-    var object = {};
-    object["name"] = "";
-    positions.forEach( position => {
-        object[position] = [];
-    });
-    return object;
-}
-
-// Yes it linear searches :(
-function findIndex(array, value)
-{
-    for(var i = 0; i < array.length; i++)
-    {
-        if(array[i] == value)
-        {
-            return i;
-        }
-    }
-    return -1;
-}
-
-//Returns a copy of an array without the element at the specified index
-function removeIndex(array, index)
-{
-    newArr = [];
-    for(var i = 0; i < array.length; i++)
-    {
-        if(i != index)
-        {
-            newArr.push(array[i]);
-        }
-    }
-    return newArr;
-}
-
-//TODO: FIX THE CONSTANTS
 const matchingDirection = [
     "z+",
     "z-",
@@ -294,6 +190,118 @@ const localPositions = [
     [-1,0,0]
 ];
 
+function convertXYZToKey(x, y, z)
+{
+    return "x"+x+"y"+y+"z"+z;
+}
+
+function convertKeyToXYZ(key)
+{
+    let xIndex = key.indexOf('x');
+    let yIndex = key.indexOf('y');
+    let zIndex = key.indexOf('z');
+
+    return [
+        Number(key.substring(xIndex + 1, yIndex)),
+        Number(key.substring(yIndex + 1, zIndex)),
+        Number(key.substring(zIndex + 1))
+    ];
+}
+
+//Basic skeleton function to keep things rendering
+function animate() {
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+    tileEditorRenderer.render( scene, tileEditorCamera );
+}
+animate();
+
+function createNewTile()
+{
+    let object = {};
+    object["name"] = "";
+    positions.forEach( position => {
+        object[position] = [];
+    });
+    return object;
+}
+
+function doColorsMatch(colorList1, colorList2)
+{
+    if(colorList1.length == 0 || colorList2.length == 0)
+    {
+        return false;
+    }
+
+    let totalColors = new Set();
+    let colorCounts1 = new Map();
+    let colorCounts2 = new Map();
+    [ 
+        [colorList1, colorCounts1], 
+        [colorList2, colorCounts2] 
+    ].forEach(element => {
+        let colorList = element[0];
+        let colorCount = element[1];
+        colorList.forEach(color => {
+            totalColors.add(color);
+            if(!colorCount.has(color))
+            {
+                colorCount.set(color, 1);
+            }
+            else
+            {
+                colorCount.set(color, colorCount.get(color) + 1);
+            }
+        });
+    });
+    let valid = true;
+    totalColors.forEach(color => {
+        //console.log(color);
+        //If one is missing the color
+        //console.log(`has colors: ${colorCounts1.has(color)} ${colorCounts2.has(color)}`);
+        if(!(colorCounts1.has(color) && colorCounts2.has(color)))
+        {
+            valid = false;
+            return;
+        }
+        else
+        {
+            //If they both have the color, but the counts differ
+            if(colorCounts1.get(color) != colorCounts2.get(color))
+            {
+                valid = false;
+                return;
+            }
+        }
+    });
+    return valid;
+}
+
+function buildDisableTable()
+{
+    //console.log("Building disable table");
+    disableTable = [];
+    //For each tile
+    for(let i = 0; i < tiles.length; i++)
+    {
+        disableTable.push({});
+        let tile = tiles[i];
+        for(let j = 0; j < matchingDirection.length; j++)
+        {
+            let direction = matchingDirection[j];
+            disableTable[i][direction] = [];
+            let antiDirection = antiMatchingDirection[j];
+            let directionColor = tile[direction];
+            for(let k = 0; k < tiles.length; k++)
+            {
+                subTile    = tiles[k];
+                otherColor = subTile[antiDirection];
+                disableTable[i][direction].push(!doColorsMatch(directionColor, otherColor));
+            }
+        }
+    }
+}
+
 function spawnTile(tileIndex, x, y, z, ignoreTemperature)
 {
     // Conditions for placing a tile:
@@ -306,14 +314,16 @@ function spawnTile(tileIndex, x, y, z, ignoreTemperature)
 
     // Key for the position we are placing at
     const placingTileKey = convertXYZToKey(x, y, z);
-
+    //console.log(`Attempting to place ${tileIndex} at ${x} ${y} ${z}`);
+    //console.log(`${placingTileKey}`);
     // Index of the position in the availableIndex array
-    var availableIndex = findIndex(availableSpaces, placingTileKey);
+    let tileAvailable = availableSpaces[tileIndex].has(placingTileKey);
     
-    if(!objectMap[placingTileKey])
+    //console.log(`indexMap[placingTileKey] = ${indexMap[placingTileKey]}`);
+    if(indexMap[placingTileKey] == null)
     { // There is no object currently in the position
         //console.log("Location is empty.");
-        if(availableIndex != -1)
+        if(tileAvailable)
         { // The key is in the availableIndex array
             //console.log("Location is available.");
             temperatureSatisfied = false;
@@ -321,19 +331,18 @@ function spawnTile(tileIndex, x, y, z, ignoreTemperature)
             { // If not ignoring temperature
                 //Calculate temperature
                 //console.log("Calculating temperature.");
-                var temperature = 0;
-                for(var i = 0; i < localPositions.length; i++)
+                let temperature = 0;
+                for(let i = 0; i < localPositions.length; i++)
                 { // For each integer direction (up down left right forward backward)
                     // The direction of the neighbor, ie "x+"
-                    var directionName = matchingDirection[i];
+                    let directionName = matchingDirection[i];
                     // The offset to get to the neighbor, ie [0, 0, 1]
-                    var neighborOffset = localPositions[i];
-                    var neighborPosition = [x + neighborOffset[0], y + neighborOffset[1], z + neighborOffset[2]];
-                    var neighborKey = convertXYZToKey(neighborPosition[0], neighborPosition[1], neighborPosition[2]);
+                    let neighborOffset = localPositions[i];
+                    let neighborPosition = [x + neighborOffset[0], y + neighborOffset[1], z + neighborOffset[2]];
+                    let neighborKey = convertXYZToKey(neighborPosition[0], neighborPosition[1], neighborPosition[2]);
                     //console.log(`Checking direction ${directionName}.`);
-                    if(objectMap[neighborKey])
-                    {
-                        // If the neighbor exists
+                    if(indexMap[neighborKey] != null)
+                    { // The neighbor exists
                         //console.log("Neighbor exists.");
                         // Since any connection currently existing must be valid
                         // We can add the number of connection sites this cell has in the direction of the neighbor
@@ -361,80 +370,39 @@ function spawnTile(tileIndex, x, y, z, ignoreTemperature)
 
             if(temperatureSatisfied)
             { // Temperature is satisfied
-                var colorMatchSatisfied = true;
+                let colorMatchSatisfied = true;
                 //Now check for color-matches on every side
                 //console.log("Checking for color match");
-                for(var i = 0; i < localPositions.length; i++)
+                for(let i = 0; i < localPositions.length; i++)
                 { // For each integer direction
                     // Get the offset to the neighbor
-                    var neighborOffset = localPositions[i];
-                    var neighborPosition = [x + neighborOffset[0], y + neighborOffset[1], z + neighborOffset[2]];
-                    var neighborKey = convertXYZToKey(neighborPosition[0], neighborPosition[1], neighborPosition[2]);
+                    let neighborOffset = localPositions[i];
+                    let neighborPosition = [x + neighborOffset[0], y + neighborOffset[1], z + neighborOffset[2]];
+                    let neighborKey = convertXYZToKey(neighborPosition[0], neighborPosition[1], neighborPosition[2]);
                     // Tile index of the neighbor
-                    var neighborTileIndex = indexMap[neighborKey];
+                    let neighborTileIndex = indexMap[neighborKey];
                     // Name of the direction from placing to neighbor, ie x+
-                    var placingTileDirection = matchingDirection[i];
+                    let placingTileDirection = matchingDirection[i];
                     //console.log(`Checking direction ${placingTileDirection}.`);
                     if(neighborTileIndex != null)
                     { // If there is actually a tile at this position
                         //console.log("Tile exists");
                         // Name of the direction from neighbor to placing, ie x-
-                        var neighborTileDirection = antiMatchingDirection[i];
+                        let neighborTileDirection = antiMatchingDirection[i];
 
-                        var placingConnectionColors = tiles[tileIndex][placingTileDirection];
-                        let placingConnectionCounts = {};
-                        var neighborTile = tiles[neighborTileIndex];
-                        var neighborConnectionColors = tiles[neighborTileIndex][neighborTileDirection];
-                        let neighborConnectionCounts = {};
-
-                        totalColors = [];
-                        placingConnectionColors.forEach(color => {
-                            totalColors.push(color);
-                            if(placingConnectionCounts[color] == null)
-                            {
-                                placingConnectionCounts[color] = 1;
-                            }
-                            else
-                            {
-                                placingConnectionCounts[color]++;
-                            }
-                        });
-                        neighborConnectionColors.forEach(color => {
-                            totalColors.push(color);
-                            if(neighborConnectionCounts[color] == null)
-                            {
-                                neighborConnectionCounts[color] = 1;
-                            }
-                            else
-                            {
-                                neighborConnectionCounts[color]++;
-                            }
-                        });
-                        totalColors.forEach(color => {
-                            let placingColorExists = placingConnectionCounts[color] != null;
-                            let neighborColorExist = neighborConnectionCounts[color] != null;
-                            if(placingColorExists && neighborColorExist)
-                            {
-                                if(placingConnectionCounts[color] != neighborConnectionCounts[color])
-                                {
-                                    colorMatchSatisfied = false;
-                                }
-                            }
-                            else
-                            {
-                                colorMatchSatisfied = false;
-                            }
-                        });
+                        let placingConnectionColors = tiles[tileIndex][placingTileDirection];
+                        let neighborConnectionColors = tiles[neighborTileIndex][neighborTileDirection];
+                        
+                        if(!doColorsMatch(placingConnectionColors, neighborConnectionColors))
+                        {
+                            colorMatchSatisfied = false;
+                        }
                     }
                 }
 
                 if(colorMatchSatisfied)
                 {
-                    //console.log("Passed color satisfaction.");
-                    // Spawn the scene object, this function also adds the object to objectMap.
-                    
-                    //Replacing this function
-                    //addTileMeshArrayToScene(scene, generateMeshesFromObject(tiles[tileIndex]), x, y, z);
+                    //Add an instance of the tile into the scene
                     let instance = instances[tileIndex];
                     for(let i = 0; i < instance.instances.length; i++)
                     {
@@ -448,25 +416,46 @@ function spawnTile(tileIndex, x, y, z, ignoreTemperature)
                         instanceMesh.setMatrixAt( instance.nextIndex, dummy.matrix );
                         instanceMesh.instanceMatrix.needsUpdate = true;
                         //console.log(dummy.position);
-                        //Object map must be dealt with
                     }
                     instance.nextIndex++;
-                    objectMap[placingTileKey] = true;
                     
                     // Add the index we used into the index map.
+                    //console.log("Adding to indexMap");
                     indexMap[placingTileKey] = tileIndex;
                     // Remove the current tile from available spaces, if it was in there.
-                    availableSpaces = removeIndex(availableSpaces, availableIndex);
+                    //console.log("Removing placingTileKey from all availableSpaces")
+                    availableSpaces.forEach(tileSpecificAvailabilitySet => {
+                        tileSpecificAvailabilitySet.delete(placingTileKey);
+                    })
                     // For each neighboring position, add it to available spaces
                     //     only if it isn't already available, and there isn't a tile there.
                     localPositions.forEach(neighborOffset => {
-                        var neighborPos = [x + neighborOffset[0], y + neighborOffset[1], z + neighborOffset[2]];
-                        var neighborKey = convertXYZToKey(neighborPos[0], neighborPos[1], neighborPos[2]);
-                        if(findIndex(availableSpaces, neighborKey) == -1)
-                        {
-                            availableSpaces.push(neighborKey);
-                        }
+                        let neighborPos = [x + neighborOffset[0], y + neighborOffset[1], z + neighborOffset[2]];
+                        let neighborKey = convertXYZToKey(neighborPos[0], neighborPos[1], neighborPos[2]);
+                        availableSpaces.forEach(tileSpecificAvailabilitySet => {
+                            if((!tileSpecificAvailabilitySet.has(neighborKey)) && (indexMap[neighborKey] == null))
+                            {
+                                tileSpecificAvailabilitySet.add(neighborKey);
+                            }
+                        })
                     });
+
+                    for(let i = 0; i < matchingDirection.length; i++)
+                    {
+                        let outgoingDirection = matchingDirection[i];
+                        let neighborPos = localPositions[i];
+                        let neighborKey = convertXYZToKey(x + neighborPos[0], y + neighborPos[1], z + neighborPos[2]);
+
+                        //True = disable
+                        for(let j = 0; j < tiles.length; j++)
+                        {
+                            if(disableTable[tileIndex][outgoingDirection][j])
+                            {
+                                availableSpaces[j].delete(neighborKey);
+                            }
+                        }
+                    }
+
                     return true;
                 }
             }
@@ -475,12 +464,27 @@ function spawnTile(tileIndex, x, y, z, ignoreTemperature)
     return false;
 }
 
-var tiles = [];
 applyButton.addEventListener("click", event => {
+    eraseInstances();
+    if(materialsToDispose)
+    {
+        materialsToDispose.forEach(material => {
+            material.dispose();
+        });
+    }
+    if(geometriesToDispose)
+    {
+        geometriesToDispose.forEach(geometry => {
+            geometry.dispose();
+        });
+    }
+    materialsToDispose = [];
+    geometriesToDispose = [];
+
     tiles = [];
-    var json = JSON.parse(jsonText.value);
+    let json = JSON.parse(jsonText.value);
     
-    var jsonTileArray = json["tiles"];
+    let jsonTileArray = json["tiles"];
     jsonTileArray.forEach(jsonTileObject => {
         newTile = createNewTile();
         newTile["color"] = Number(jsonTileObject["color"]);
@@ -494,8 +498,11 @@ applyButton.addEventListener("click", event => {
     });
 
     instances = []
+    availableSpaces = [];
     for(let i = 0; i < tiles.length; i++)
     {
+        availableSpaces.push(new Set());
+        //Create the object which we will add to the instances array
         let tileInstance = {};
         instances[i] = tileInstance;
         let tile = tiles[i];
@@ -503,54 +510,83 @@ applyButton.addEventListener("click", event => {
         tileInstance.nextIndex = 0;
         tileInstance.instances = [];
         tileInstance.offsets = [];
-        const instanceCount = 2000;
+        
         let mainMaterial = new THREE.MeshBasicMaterial( {color: tile.color} );
         let mainGeometry  = new THREE.BoxGeometry(12, 12, 12);
-        let mainPosition = new THREE.Vector3(0, 0, 0);
-        
+        let mainOffset = new THREE.Vector3(0, 0, 0);
         let mainInstanceMesh = new THREE.InstancedMesh(mainGeometry, mainMaterial, instanceCount);
+
+        materialsToDispose.push(mainMaterial);
+        geometriesToDispose.push(mainGeometry);
+
         scene.add(mainInstanceMesh);
         tileInstance.instances.push(mainInstanceMesh);
-        tileInstance.offsets.push(mainPosition);
-        
+        tileInstance.offsets.push(mainOffset);
         
         for(let j = 0; j < matchingDirection.length; j++)
-        {
+        { //For each direction
             direction = matchingDirection[j];
+            //Get the colors of the connectors in that direction
             let directionColors = tile[direction];
             for(let k = 0; k < directionColors.length; k++)
-            {
-                let subCubeGeometry = new THREE.BoxGeometry(2, 2, 2);
+            { //For each of those colors, make an instance mesh with offset
                 let color = directionColors[k];
                 let material = new THREE.MeshBasicMaterial( {color: color} );
+                let geometry = new THREE.BoxGeometry(2, 2, 2);
                 let offset = positionOffsets[direction].clone();
                 offset.multiplyScalar(7);
-                let mesh = new THREE.InstancedMesh(subCubeGeometry, material, instanceCount);
+                let mesh = new THREE.InstancedMesh(geometry, material, instanceCount);
+                
+                materialsToDispose.push(material);
+                geometriesToDispose.push(geometry);
+                
+                scene.add(mesh);
                 tileInstance.instances.push(mesh);
                 tileInstance.offsets.push(offset);
-                scene.add(mesh);
             }
         }
     }
+    buildDisableTable();
+    reset();
     //console.log(instances);
 });
 
-resetButton.addEventListener("click", event => {
-    Object.entries(objectMap).forEach( entry => {
-        var key = entry[0];
-        var value = entry[1];
-        value.forEach(object => {
-            scene.remove(object);
-        })
-    });
-    objectMap = {};
+function eraseInstances()
+{
+    if(instances)
+    {
+        instances.forEach(instanceStructure => {
+            instanceStructure.instances.forEach(instance => {
+                for(let i = 0; i < instanceCount; i++)
+                {
+                    instance.setMatrixAt(i, new THREE.Matrix4());
+                }
+                instance.instanceMatrix.needsUpdate = true;
+            });
+        });
+    }
+}
+
+function reset()
+{
+    eraseInstances();
+
     indexMap = {};
-    availableSpaces = [ convertXYZToKey(0, 0, 0) ];
+    let originKey = convertXYZToKey(0, 0, 0)
+    //availableSpaces = [ originKey ];   
+    availableSpaces.forEach(availableSet => {
+        availableSet.add(originKey);
+    });
+    
     spawnTile(0, 0, 0, 0, true);
+    
     enableStart = true;
     placeCount = 1;
     applyDisabledButtons();
-    //addTileMeshArrayToScene(scene, generateMeshesFromObject(tiles[0]), 0, 0, 0);
+}
+
+resetButton.addEventListener("click", event => {
+    reset();
 });
 
 //Returns a random value between [a,b] both inclusive
@@ -562,13 +598,47 @@ function randInt(a, b)
 function step()
 {
     let attemptCount = 0;
+    let tileIndex;
+    let availableSpaceIndex;
+    let position;
+    let exit = false;
     do {
         attemptCount++;
-        var availableSpaceIndex = randInt(0, availableSpaces.length - 1);
-        var tileIndex = randInt(0, tiles.length - 1);
-        position = convertKeyToXYZ(availableSpaces[availableSpaceIndex]);
+        
+        //tileIndex = randInt(0, tiles.length - 1);
+        let sum = 0;
+        for(let i = 0; i < tiles.length; i++)
+        {
+            //console.log(availableSpaces[i].size);
+            sum += availableSpaces[i].size;
+        }
+        //console.log(`Sum ${sum}`);
+        let tileIndex = 0;
+        let randomNumber = randInt(0, sum-1);
+        //console.log(`Searching for ${randomNumber}`);
+        sum -= availableSpaces[0].size
+        while(sum > randomNumber)
+        {
+            tileIndex++;
+            //console.log(tileIndex);
+            sum -= availableSpaces[tileIndex].size;
+        }
+
+
+        //console.log(availableSpaces[tileIndex].size);
+        if(availableSpaces[tileIndex].size == 0)
+        {
+            continue;
+        }
+
+        availableSpaceIndex = randInt(0, availableSpaces[tileIndex].size - 1);
+        //console.log(availableSpaceIndex);
+        //console.log(availableSpaces[tileIndex].size);
+        position = convertKeyToXYZ(Array.from(availableSpaces[tileIndex])[availableSpaceIndex]);
+        //console.log(position);
         //console.log("Spawning");
-    } while( !spawnTile(tileIndex, position[0], position[1], position[2], false) );
+        exit = spawnTile(tileIndex, position[0], position[1], position[2], false);
+    } while( !exit );
     placeCount++;
     //console.log(`Tried ${attemptCount} times before spawning (${placeCount} tiles now).`);
     //console.log(attemptCount);
