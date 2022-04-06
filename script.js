@@ -4,22 +4,29 @@ const camera = new THREE.PerspectiveCamera( 60, 1, 0.1, 10000 );
 
 const deg2rad = Math.PI/180;
 
+const canvasContainer = document.getElementById("mainCanvasHolder");
 const canvas = document.getElementById("mainCanvas");
 const renderer = new THREE.WebGLRenderer( { 
     canvas: canvas,
     antialias: true
 });
-renderer.setSize( canvas.parentElement.offsetHeight, canvas.parentElement.offsetHeight );
 
-const tileEditorCanvas = document.getElementById("tileViewerCanvas");
-const tileEditorRenderer = new THREE.WebGLRenderer( { 
-    canvas: tileEditorCanvas 
-});
-tileEditorRenderer.setSize( 450, 450 );
 
-window.addEventListener( 'resize', () => {
-    renderer.setSize( canvas.parentElement.offsetHeight, canvas.parentElement.offsetHeight );
-});
+function resizeCanvas()
+{
+    let width  = canvas.clientWidth;
+    let height = canvas.clientHeight;
+    if (canvas.width !== width || canvas.height !== height)
+    {
+        renderer.setSize(width, height, false);
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+    }
+}
+
+window.addEventListener( 'resize', resizeCanvas);
+resizeCanvas();
+
 
 let enableStart = true;
 let mouseDown = false;

@@ -12,56 +12,35 @@
 
 	<body>
 		<div id="wrapper">
-			<div class="">
-				<h1>Self assembling tile simulator</h1>
-			</div>
-			<div id="mainContainer">
-				<div id="canvasHolder">
+			<div id="firstColumn">
+				<div id="title">
+					<h1>Self Assembling 3D Tile Simulator</h1>
+				</div>
+				<div id="mainCanvasHolder">
 					<canvas id="mainCanvas" class="webgl" tabindex='1'></canvas>
 				</div>
-				<div id="configurator">
-					<div id="individualTileView">
-						<div id="tileViewer">
-							<canvas id="tileViewerCanvas" class="webgl" tabindex='1'></canvas>
-						</div>
-						<div id="settingsContainer">
-							<div id="environmentSettings">
-								<h2>Environment Settings</h2>
-								<div id="environmentSettingsList">
-									<button id="resetButton" type="button">Reset</button>
-									<button id="stepButton" type="button">Step</button>
-									<button id="startButton" type="button">Start</button>
-									<div>Delay: <input type="input" id="delayInput"></input></div>
-									<button id="stopButton" type="button" disabled>Stop</button>
-									<div>Seed: <input type="input"></input></div>
-									
-								</div>
-							</div>
-							<div id="tileSettings">
-								<h2>Tile Settings</h2>
-							</div>
-						</div>
-					</div>
-					<div id="tilesetAndJson">
-						<div id="tileset">
-							<h2>Tileset</h2>
-							<div id="tilesetContainer">
+				<div id="buttonBar">
+					<button id="resetButton" type="button">Reset</button>
+					<button id="stepButton" type="button">Step</button>
+					<button id="startButton" type="button">Start</button>
+					<div>Delay: <input type="input" id="delayInput"></input></div>
+					<button id="stopButton" type="button" disabled>Stop</button>
+					<div>Seed: <input type="input"></input></div>
+				</div>
+			</div>
+			<div id="secondColumn">
+				<div id="tileset">
+					<h2>Tileset</h2>
+				</div>
+				<div id="tileViewer"">
 
-							</div>
-							<div id="tilesetButtonContainer">
-								<button type="button">Add</button>
-								<button type="button" disabled>Remove</button>
-							</div>
-						</div>
-						<div id="jsonViewer">
-							<h2>Tileset JSON</h2>
-							<textarea id="jsonText"></textarea>
-							<div id="jsonViewerButtonContainer">
-								<button type="button">Generate</button>
-								<button id="applyButton" type="button">Apply</button>
-							</div>
-						</div>
-					</div>
+				</div>
+				<div id="json">
+					<textarea id="jsonText"></textarea>
+				</div>
+				<div id="jsonButtons">
+					<button type="button">Generate</button>
+					<button id="applyButton" type="button">Apply</button>
 				</div>
 			</div>
 		</div>

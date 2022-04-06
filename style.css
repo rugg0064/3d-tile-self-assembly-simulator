@@ -1,124 +1,86 @@
+
 body {
-    background-color: papayawhip;
+    padding: 0;
+    margin: 0;
+    height: 100vh;
+}
+
+h1, h2 {
     padding: 0;
     margin: 0;
 }
 
-h2 {
-    margin: 0.25em;
-    text-align: center;
-}
-
 #wrapper {
-    background-color: white;
-    margin: 0 auto;
-    padding: 1rem 1rem;
-    width: 80%;
-}
+    background-color: papayawhip;
+    width:  100%;
+    height: 100%;
 
-#canvasHolder {
-    margin-right: 10px;
-    width: 50%;
-    aspect-ratio: 1;
-}
-
-#mainCanvas {
-
-}
-
-#mainContainer {
     display: flex;
     flex-direction: row;
-    width: 100%;
 }
-
-#configurator {
-    background-color: red; 
-    display: flex;
-    flex-direction: row;
-    flex-grow: 1;
-}
-#configurator > * {
-    flex-grow: 1;
-}
-    #individualTileView {
+    #firstColumn {
+        background-color: #266867;
+        flex-grow: 65;
         display: flex;
         flex-direction: column;
-        align-items: stretch;
+        flex-shrink: 0;
+        padding: 1rem;
         align-content: stretch;
     }
-    #individualTileView > * {
-        
-    }
-        #tileViewer {
-            background-color: gray; 
-            width: 100%;
-            aspect-ratio: 1;
+        #title {
+            height: 10%;
         }
-            #tileViewerCanvas {
+        #mainCanvasHolder {
+            height: 80%;
+            margin: 1rem;
+            display: flex;
+            align-items: stretch;
+            align-content: stretch;
+        }
+            #mainCanvas {
                 background-color: black;
-                width: 100%;
-                height: 100%;
+                flex-grow: 1;
             }
-        #settingsContainer {
+        #buttonBar {
+            height: 10%;
             display: flex;
             flex-direction: row;
-            height: 100%;
+            gap: 1rem;
+            align-items: center;
         }
-            #settingsContainer > * {
-                flex-grow: 1;
+            #buttonBar > * {
+                height: 50%;
             }
-            #environmentSettings {
-                background-color: maroon;
-                color: white;
-            }
-                #environmentSettingsList {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: flex-start;
-                    align-content: flex-start;
-                }
-            #tileSettings {
-                background-color: green;
-            }
-    #tilesetAndJson {
+    #secondColumn {
+        background-color: #F58800;
+        flex-grow: 35;
         display: flex;
         flex-direction: column;
-        align-items: stretch;
-        align-content: stretch;
-    }
-    #tilesetAndJson > * {
-        flex-grow: 1;
+        flex-shrink: 0;
+        padding: 1rem;
     }
         #tileset {
-            background-color:orange;
-            display: flex;
-            flex-direction: column;
+            height: 20%;
         }
-            #tilesetContainer {
-                flex-grow: 1;
-            }
-            #tilesetButtonContainer {
-                display: flex;
-                flex-direction: row;
-            }
-                #tilesetButtonContainer > * {
-                    flex-grow: 1;
-                }
-        #jsonViewer {
-            background-color: aqua;
+        #tileViewer {
+            height: 30%;
+        }
+        #json {
+            height: 40%;
             display: flex;
-            flex-direction: column;
+            align-items: stretch;
         }
             #jsonText {
                 resize: none;
                 flex-grow: 1;
             }
-            #jsonViewerButtonContainer {
-                display: flex;
-                flex-direction: row;
+        #jsonButtons {
+            height: 10%;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 1rem;
+        }
+            #jsonButtons > * {
+                height: 50%;
             }
-                #jsonViewerButtonContainer > * {
-                    flex-grow: 1;
-                }
-            
