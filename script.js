@@ -587,11 +587,13 @@ function eraseInstances()
 {
     if(instances)
     {
+        dummy.position.set(-5000000, -5000000, -5000000);
+        dummy.updateMatrix();
         instances.forEach(instanceStructure => {
             instanceStructure.instances.forEach(instance => {
                 for(let i = 0; i < instanceCount; i++)
                 {
-                    instance.setMatrixAt(i, new THREE.Matrix4());
+                    instance.setMatrixAt(i, dummy.matrix);
                 }
                 instance.instanceMatrix.needsUpdate = true;
             });
