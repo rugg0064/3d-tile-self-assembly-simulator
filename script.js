@@ -1,13 +1,13 @@
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 10000 );
-const tileEditorCamera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 1000 );
+const camera = new THREE.PerspectiveCamera( 60, 1, 0.1, 10000 );
 
 const deg2rad = Math.PI/180;
 
 const canvas = document.getElementById("mainCanvas");
 const renderer = new THREE.WebGLRenderer( { 
-    canvas: canvas 
+    canvas: canvas,
+    antialias: true
 });
 renderer.setSize( canvas.parentElement.offsetHeight, canvas.parentElement.offsetHeight );
 
@@ -29,7 +29,7 @@ keysDown = {
     's': false,
     'd': false,
     ' ': false,
-    'Control': false
+    'Shift': false
 };
 lastOffsetX = 0;
 lastOffsetY = 0;
@@ -88,6 +88,16 @@ canvas.addEventListener('keyup', (event) => {
 //y+ is up
 //y- is down
 
+scene.add(new THREE.AmbientLight(0x808080));
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.75)
+directionalLight.position.set(1, 1, 1);
+scene.add(directionalLight);
+let lightingDummy = new THREE.Object3D();
+lightingDummy.position.set(-1, -1, -1);
+scene.add(lightingDummy);
+directionalLight.target = lightingDummy;
+
+
 setInterval(handleMovement, 0.05);
 function handleMovement()
 {
@@ -114,7 +124,7 @@ function handleMovement()
     newRight.multiplyScalar(rightAmount);
 
     let up = new THREE.Vector3(0, 1, 0);
-    let upAmount = (keysDown[' '] ? 1 : 0) + (keysDown['Control'] ? -1 : 0);
+    let upAmount = (keysDown[' '] ? 1 : 0) + (keysDown['Shift'] ? -1 : 0);
     up.multiplyScalar(upAmount); 
 
     let finalMoveOffset = new THREE.Vector3(0, 0, 0);
@@ -212,7 +222,6 @@ function convertKeyToXYZ(key)
 function animate() {
     requestAnimationFrame( animate );
     renderer.render( scene, camera );
-    tileEditorRenderer.render( scene, tileEditorCamera );
 }
 animate();
 
@@ -511,7 +520,8 @@ applyButton.addEventListener("click", event => {
         tileInstance.instances = [];
         tileInstance.offsets = [];
         
-        let mainMaterial = new THREE.MeshBasicMaterial( {color: tile.color} );
+        let mainMaterial = new THREE.MeshPhongMaterial( {color: tile.color  } );
+        mainMaterial.flatShading = true;
         let mainGeometry  = new THREE.BoxGeometry(12, 12, 12);
         let mainOffset = new THREE.Vector3(0, 0, 0);
         let mainInstanceMesh = new THREE.InstancedMesh(mainGeometry, mainMaterial, instanceCount);
@@ -531,7 +541,7 @@ applyButton.addEventListener("click", event => {
             for(let k = 0; k < directionColors.length; k++)
             { //For each of those colors, make an instance mesh with offset
                 let color = directionColors[k];
-                let material = new THREE.MeshBasicMaterial( {color: color} );
+                let material = new THREE.MeshPhongMaterial( {color: color} );
                 let geometry = new THREE.BoxGeometry(2, 2, 2);
                 let offset = positionOffsets[direction].clone();
                 offset.multiplyScalar(7);
