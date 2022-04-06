@@ -164,7 +164,7 @@ let materialsToDispose = [];
 let geometriesToDispose = [];
 let placeCount = 0;
 let tiles = [];
-const instanceCount = 15000;
+const instanceCount = 500;
 
 //A map of "xxyyzz" keys mapping placed tiles to their index.
 let indexMap = {};
@@ -672,7 +672,7 @@ function step()
         //console.log(position);
         //console.log("Spawning");
         exit = spawnTile(tileIndex, position[0], position[1], position[2], false);
-    } while( !exit );
+    } while( !exit && attemptCount < 1000);
     placeCount++;
     //console.log(`Tried ${attemptCount} times before spawning (${placeCount} tiles now).`);
     //console.log(attemptCount);
