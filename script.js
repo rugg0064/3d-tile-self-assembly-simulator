@@ -31,12 +31,16 @@ resizeCanvas();
 let enableStart = true;
 let mouseDown = false;
 keysDown = {
-    'w': false,
-    'a': false,
-    's': false,
-    'd': false,
-    ' ': false,
-    'Shift': false
+    'w'         : false,
+    'a'         : false,
+    's'         : false,
+    'd'         : false,
+    ' '         : false,
+    'Shift'     : false,
+    'ArrowUp'   : false,
+    'ArrowLeft' : false,
+    'ArrowDown' : false,
+    'ArrowRight': false,
 };
 lastOffsetX = 0;
 lastOffsetY = 0;
@@ -58,21 +62,29 @@ function getVector3FromYawPitch(yaw, pitch)
 camera.position.z = 500;
 let cameraYaw = 0;
 let cameraPitch = 0;
+const cameraMouseSensitivity = 0.020;
+const cameraKeyboardSensitivity = 0.005;
+const movementSensitivity = 5;
+function updateCamera()
+{
+    let cameraLookAtOffset = getVector3FromYawPitch(cameraYaw, cameraPitch)
+    let tempVector = new THREE.Vector3(0, 0, 0, 'XYZ');
+    tempVector.add(camera.position);
+    tempVector.add(cameraLookAtOffset);
+    camera.lookAt(tempVector);
+}
+
 canvas.addEventListener('mousemove', (event) => {
     if(mouseDown)
     {
-        const sensitivity = 0.005;
-        cameraYaw +=   -(lastOffsetX - event.offsetX) * sensitivity;
-        cameraPitch +=  (lastOffsetY - event.offsetY) * sensitivity;
+        cameraYaw   += -(lastOffsetX - event.offsetX) * cameraMouseSensitivity;
+        cameraPitch +=  (lastOffsetY - event.offsetY) * cameraMouseSensitivity;
         lastOffsetX = event.offsetX;
         lastOffsetY = event.offsetY;
-        let cameraLookAtOffset = getVector3FromYawPitch(cameraYaw, cameraPitch)
-        let tempVector = new THREE.Vector3(0, 0, 0, 'XYZ');
-        tempVector.add(camera.position);
-        tempVector.add(cameraLookAtOffset);
-        camera.lookAt(tempVector);
+        updateCamera();
     }
 });
+
 canvas.addEventListener('mouseup', (event) => {
     mouseDown = false;
     lastOffsetX = event.offsetX;
@@ -108,7 +120,6 @@ directionalLight.target = lightingDummy;
 setInterval(handleMovement, 0.05);
 function handleMovement()
 {
-    const sensitivity = 5;
 
     let forward = getVector3FromYawPitch(cameraPitch, cameraYaw);
     let newForward = new THREE.Vector3( 
@@ -139,9 +150,13 @@ function handleMovement()
     finalMoveOffset.add(newRight);
     finalMoveOffset.add(up);
     finalMoveOffset.normalize();
-    finalMoveOffset.multiplyScalar(sensitivity);
+    finalMoveOffset.multiplyScalar(movementSensitivity);
 
     camera.position.add(finalMoveOffset);
+
+    cameraYaw   += ( (keysDown['ArrowLeft'] ? -1 : 0) + (keysDown['ArrowRight'] ? 1 : 0) ) * cameraMouseSensitivity;
+    cameraPitch += -( (keysDown['ArrowUp'] ? -1 : 0) + (keysDown['ArrowDown'] ? 1 : 0)) * cameraMouseSensitivity;
+    updateCamera();
 }
 
 let instances;
